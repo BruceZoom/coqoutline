@@ -121,15 +121,19 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         let symbol = new vscode.DocumentSymbol(
                             tokens[1],
                             tokens[0],
-                            /Section/.test(tokens[0]) ?
+                            "Section" === tokens[0] ?
                                 vscode.SymbolKind.Namespace:
                                 vscode.SymbolKind.Module,
                             line.range, line.range);
 
                         nodes[nodes.length-1].push(symbol);
                         
-                        nodes.push(symbol.children);
-                        node_ids.push(tokens[1]);
+                        // exclude module inheritance
+                        if ("Module" !== tokens[0] || !line.text.includes(":="))
+                        {
+                            nodes.push(symbol.children);
+                            node_ids.push(tokens[1]);
+                        }
                         // console.debug("push: " + tokens[1]);
                     }
                     else if (reg_key_region_end.test(tokens[0]))
