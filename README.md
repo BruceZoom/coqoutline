@@ -71,3 +71,4 @@ To open outline view in case it is closed, click View > Open View, and search fo
 - [x] the `with` keyword
 - [ ] the range (end line) of program definitions may be wrong, no "Defined" token
 - [x] incorrectly includes code in comments
+- [ ] inductive constructors not handled

@@ -1,29 +1,31 @@
 import * as vscode from 'vscode';
-import * as outline from './OutlineView';
+import { CoqProject } from './CoqProject';
+import { CoqDocumentSymbolProvider } from './CoqDocumentSymbolProvider';
+import { CoqDefinitionProvider } from './CoqDefinitionProvider';
+
+let project: CoqProject;
 
 export function activate(context: vscode.ExtensionContext) {
 	
 	console.debug("activate coqoutline");
 
-	// console.log("Starting Coq Outline...");
+	project = CoqProject.create();
+	context.subscriptions.push(project);
+
 	context.subscriptions.push(
 		vscode.languages.registerDocumentSymbolProvider(
 			{scheme: "file", language: "coq"}, 
-			new outline.CoqDocumentSymbolProvider()
+			new CoqDocumentSymbolProvider()
 		)
 	);
-
-	// vscode.workspace.onDidChangeTextDocument((params) => {
-
-	// });
 	
 
-	// context.subscriptions.push(
-	// 	vscode.languages.registerDefinitionProvider(
-	// 		{scheme: "file", language: "coq"}, 
-	// 		new outline.CoqDefinitionProvider()
-	// 	)
-	// );
+	context.subscriptions.push(
+		vscode.languages.registerDefinitionProvider(
+			{scheme: "file", language: "coq"}, 
+			new CoqDefinitionProvider()
+		)
+	);
 
 }
 
