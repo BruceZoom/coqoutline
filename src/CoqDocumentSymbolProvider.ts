@@ -15,6 +15,10 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                 {
                     resolve(coqDoc.getSymbols());
                 }
+                else
+                {
+                    console.debug("not loaded " + document.fileName);
+                }
             }
         });
     }
@@ -59,18 +63,24 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
         return new Promise((resolve, reject) => 
         {
             let symbols: vscode.DocumentSymbol[] = [];
+            // symbol stack and names at each level
             let nodes = [symbols];
             let node_ids = [""];
+            // flattened symbol list
             let symbols_flat = [];
             
+            // definition and theorem stack
             let def_stack: vscode.DocumentSymbol[] = [];
             let thm_stack: vscode.DocumentSymbol[] = [];
             
+            // nested level of comment, 0 if not in comment block
             let cnt_comment = 0;
 
+            // the class/record the current line lies in, parsing fields of the class/record
             let focused_class: vscode.DocumentSymbol | null = null;
             let field_ended = true;
 
+            // the inductive definition the current line lies in, parsing constructors of it
             let focused_inductive: vscode.DocumentSymbol | null = null;
 
             for (var lnum = 0; lnum < document.lineCount; lnum++) {
@@ -86,6 +96,9 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                 // if outside comment block
                 if (cnt_comment <= 0)
                 {
+                    // the if-else blocks below parses every keywords leading a line
+                    // therefore they are guaranteed to not be in a comment with 0 comment level
+                    // parse a region start
                     if (coqreg.reg_key_region_start.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -107,8 +120,10 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         }
                         // console.debug("push: " + tokens[1]);
                     }
+                    // parse a region end
                     else if (coqreg.reg_key_region_end.test(tokens[0]))
                     {
+                        // only matches the innermost region
                         if(node_ids[nodes.length - 1] === tokens[1]){
                             nodes.pop();
                             node_ids.pop();
@@ -127,6 +142,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         //     }
                         // }
                     }
+                    // parse a line of inductive constructors
                     else if (focused_inductive !== null)
                     {
                         let item;
@@ -142,6 +158,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                             symbols_flat.push(symbol);
                         }
                     }
+                    // parse a definition start
                     else if (coqreg.reg_key_definition.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -151,6 +168,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                             line.range, line.range);
 
                         nodes[nodes.length-1].push(symbol);
+                        // special treatment when the definition is a (co)inductive one
                         if (coqreg.reg_key_inductive.test(tokens[0]))
                         {
                             focused_inductive = symbol;
@@ -158,6 +176,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         symbols_flat.push(symbol);
                         def_stack.push(symbol);
                     }
+                    // parse a theorem start
                     else if (coqreg.reg_key_theorem.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -170,6 +189,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         symbols_flat.push(symbol);
                         thm_stack.push(symbol);
                     }
+                    // parse a class/record field definition
                     // detects field of class and record before detections of these two
                     // because we assume fields and class name are not in the same line
                     else if (focused_class !== null && field_ended && field !== null)
@@ -184,6 +204,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         symbols_flat.push(symbol);
                         field_ended = false;
                     }
+                    // parse a class start
                     else if (coqreg.reg_key_class.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -197,6 +218,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         focused_class = symbol;
                         def_stack.push(symbol);
                     }
+                    // parse a record start
                     else if (coqreg.reg_key_record.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -210,6 +232,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         focused_class = symbol;
                         def_stack.push(symbol);
                     }
+                    // parse a ltac start
                     else if (coqreg.reg_key_ltac.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -222,11 +245,14 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         symbols_flat.push(symbol);
                         def_stack.push(symbol);
                     }
+                    // parse assumptions start, multiple assumptions in the same line
                     else if (coqreg.reg_key_assumption_plural.test(tokens[0]))
                     {
+                        // parse idents outside parenthesis
                         let ident_names = line.text.trim().substring(tokens[0].length).trim().match(coqreg.reg_idents);
                         if (ident_names !== null && ident_names.join("") !== "")
                         {
+                            // multiple idents may be in the same line
                             ident_names[0].trim().split(" ").forEach(ident_name => {
                                 let symbol = new vscode.DocumentSymbol(
                                     ident_name.trim(),
@@ -239,10 +265,11 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                                 def_stack.push(symbol);
                             });
                         }
+                        // parse idents closed by parenthesis
                         ident_names = line.text.trim().substring(tokens[0].length).trim().match(coqreg.reg_idents_with_parenth);
                         if (ident_names !== null && ident_names.join("") !== "")
                         {
-                            // console.debug(ident_names.join("").replace(/\(/g, " ",).replace(/:/g, " ").trim().split(" "));
+                            // multiple idents may be in the parenthesis
                             ident_names.join("").replace(/\(/g, " ",).replace(/:/g, " ").trim().split(" ").forEach(ident_name => {
                                 if(ident_name !== "")
                                 {
@@ -259,6 +286,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                             });
                         }
                     }
+                    // parse an assumption start
                     else if (coqreg.reg_key_assumption_singular.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -272,7 +300,9 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         def_stack.push(symbol);
                     }
 
-                    // add with definition
+                    // add with definition/theorem
+                    // they are in separate if-blocks because it may be in the same line as the main definition
+                    // however, we now only handle `with` leading a new line
                     if (def_stack.length > 0 && coqreg.reg_key_with.test(tokens[0]))
                     {
                         let symbol = new vscode.DocumentSymbol(
@@ -285,19 +315,33 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         symbols_flat.push(symbol);
                         def_stack.push(symbol);
                     }
+                    else if (thm_stack.length > 0 && coqreg.reg_key_with.test(tokens[0]))
+                    {
+                        let symbol = new vscode.DocumentSymbol(
+                            tokens[1],
+                            thm_stack[thm_stack.length-1].detail,
+                            thm_stack[thm_stack.length-1].kind,
+                            line.range, line.range);
+
+                        nodes[nodes.length-1].push(symbol);
+                        symbols_flat.push(symbol);
+                        thm_stack.push(symbol);
+                    }
                 }
                 
-                // above keywords are leading ones in a line, guaranteed not in comment
-                // calculate the comment level, only count definition end and theorem end when it is at 0 level
                 // let cnt_comment_l = line.text.match(coqreg.reg_comment_l)?.length;
                 // let cnt_comment_r = line.text.match(coqreg.reg_comment_r)?.length;
                 // cnt_comment += (cnt_comment_l === undefined?0:cnt_comment_l) - (cnt_comment_r === undefined?0:cnt_comment_r);
+                
+                // match all comment parentheses in this line
+                // calculate the comment level, only count definition end and theorem end when it is at 0 level
                 let comment_item;
                 while ((comment_item = coqreg.reg_comment.exec(line.text)) !== null)
                 {
                     cnt_comment += (comment_item[0] === "(*") ? 1 : -1;
                 }
 
+                // finishes the parse of one field when encounters `;` finishing a line outside comment
                 if (focused_class !== null && !field_ended && cnt_comment <= 0 && coqreg.reg_field_end.test(line.text.trim()))
                 {
                     let symbol = focused_class.children[focused_class.children.length - 1];
@@ -333,6 +377,7 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                         }
                         focused_class = null;
                     }
+                    // an inductive definition ends after a period
                     if (focused_inductive !== null)
                     {
                         focused_inductive = null;
@@ -340,11 +385,14 @@ export class CoqDocumentSymbolProvider implements vscode.DocumentSymbolProvider 
                 }
                 if (thm_stack.length > 0 && cnt_comment <= 0 && coqreg.reg_key_thm_end.test(line.text.trim()))
                 {
-                    let symbol = thm_stack[thm_stack.length - 1];
-                    symbol.range = new vscode.Range(
-                        symbol.range.start, line.range.end
-                    );
-                    thm_stack.pop();
+                    while (thm_stack.length > 0)
+                    {
+                        let symbol = thm_stack[thm_stack.length - 1];
+                        symbol.range = new vscode.Range(
+                            symbol.range.start, line.range.end
+                        );
+                        thm_stack.pop();
+                    }
                 }
             }
 

@@ -8,6 +8,7 @@ The outline view is in the explorer tab to the left.
 To open outline view in case it is closed, click View > Open View, and search for "outline".
 
 ## Dos and Don'ts
+- After renaming a file, its outline view may not display, but changing it a lit bit will make outline view work. This is bug requiring a fix.
 - Comments should be in separate lines from your code.
     ```coq
     (* NOT OK *)
@@ -63,12 +64,24 @@ To open outline view in case it is closed, click View > Open View, and search fo
     Module A
         := B.
     ```
+- Inductive definition and its constructors should not be put in the same line, and remember to put at least a white space between items.
+  ```coq
+  (* OK *)
+  Inductive A: Type :=
+  | A | B
+  | C.
+  (* NOT OK *)
+  Inductive A: Type := | A
+  | B| C.
+  ```
+- `Defined` is treated the same as `Qed`, no succeeding ident is allowed.
   
 ## Bugs & Todos
 
 - [ ] does not support utf-8 characters
 - [x] multiple assumptions by one key word.
 - [x] the `with` keyword
-- [ ] the range (end line) of program definitions may be wrong, no "Defined" token
+- [x] the range (end line) of program definitions may be wrong, no "Defined" token
 - [x] incorrectly includes code in comments
-- [ ] inductive constructors not handled
+- [x] inductive constructors not handled
+- [ ] after renaming an open file, the outline view cannot display but definitions can already be located

@@ -2,7 +2,7 @@ const key_region_start = "Section|Module Type|Module";
 const key_region_end = "End";
 // theorems need to be closed by key_thm_end
 const key_theorem = "Theorem|Lemma|Remark|Fact|Corollary|Property|Proposition|Goal";
-const key_thm_end = "(Qed|Admitted|Abort)\\.";
+const key_thm_end = "(Qed|Admitted|Abort|Defined)\\.";
 // belows need to be closed by key_def_end
 const key_definition = "Program Definition|Program Fixpoint|Program CoFixpoint|Program Function|Function|CoFixpoint|Fixpoint|Definition|Example|Let";
 const key_inductive = "CoInductive|Inductive";
@@ -49,4 +49,4 @@ export const reg_inductive_item = RegExp("(\\s+\\|\\s*" + ident + ")|(^\\|\\s*" 
 
 export const reg_comment_l = /\(\*/g;
 export const reg_comment_r = /([^\(]\*\))|(^\*\))/g;
-export const reg_comment = /(\(\*)|(\*\))/g
+export const reg_comment = /(\(\*)|(\*\))/g;

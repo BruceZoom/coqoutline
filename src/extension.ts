@@ -18,7 +18,6 @@ export function activate(context: vscode.ExtensionContext) {
 			new CoqDocumentSymbolProvider()
 		)
 	);
-	
 
 	context.subscriptions.push(
 		vscode.languages.registerDefinitionProvider(

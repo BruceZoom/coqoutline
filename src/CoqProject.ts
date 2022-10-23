@@ -1,3 +1,4 @@
+import { assert } from 'console';
 import * as vscode from 'vscode';
 import { CoqDocument } from './CoqDocument';
 
@@ -9,12 +10,24 @@ export class CoqProject implements vscode.Disposable
     constructor() {
         vscode.workspace.onDidChangeTextDocument((params) => this.onDidChangeTextDocument(params));
         vscode.workspace.onDidOpenTextDocument((params) => this.onDidOpenTextDocument(params));
-        vscode.workspace.findFiles("**/*.v").then((results) => {
-            results.forEach((uri) => {
-                vscode.workspace.openTextDocument(uri).then(doc => this.tryLoadDocument(doc));
-            });
+
+        vscode.workspace.onDidCreateFiles((params) => this.onDidCreateFiles(params));
+        vscode.workspace.onDidDeleteFiles((params) => this.onDidDeleteFiles(params));
+        vscode.workspace.onDidRenameFiles((params) => this.onDidRenameFiles(params));
+
+        vscode.workspace.findFiles("_CoqProject").then((results) => {
+            // only prepare symbols for all Coq files in the workspace
+            // when _CoqProject is found at workspace root, i.e., this is a Coq project
+            // this is to prevent to unnecessarily traverse through large workspaces
+            if (results.length >= 1)
+            {
+                vscode.workspace.findFiles("**/*.v").then((results) => {
+                    results.forEach((uri) => {
+                        vscode.workspace.openTextDocument(uri).then(doc => this.tryLoadDocument(doc));
+                    });
+                });
+            }
         });
-        // vscode.workspace.textDocuments.forEach((doc => this.tryLoadDocument(doc)));
     }
 
     public static create() {
@@ -31,6 +44,11 @@ export class CoqProject implements vscode.Disposable
     }
 
     public getCoqDocument(uri: vscode.Uri): CoqDocument|undefined {
+        if(!this.coqDocuments.has(uri.toString())) {
+            // try load it once if not found
+            console.debug("reload " + uri.path);
+            vscode.workspace.openTextDocument(uri).then(doc => this.tryLoadDocument(doc));
+        }
         return this.coqDocuments.get(uri.toString());
     }
 
@@ -45,7 +63,12 @@ export class CoqProject implements vscode.Disposable
         }
         const uri = doc.uri.toString();
         if(!this.coqDocuments.has(uri)) {
-            this.coqDocuments.set(uri, new CoqDocument(doc));
+            let coqDoc = new CoqDocument(doc);
+            this.coqDocuments.set(uri, coqDoc);
+            return coqDoc;
+        }
+        else {
+            console.debug("repeated load of " + doc.fileName);
         }
     }
 
@@ -53,27 +76,52 @@ export class CoqProject implements vscode.Disposable
         let uri = params.document.uri.toString();
         let doc = this.coqDocuments.get(uri);
         if(!doc) {
+            // try load it if not found
+            this.tryLoadDocument(params.document)?.reparseSymbols(params.document);
             return;
         }
         doc.reparseSymbols(params.document);
     }
 
-    private onDidOpenTextDocument(doc: vscode.TextDocument) {
-        this.tryLoadDocument(doc);
+    private onDidOpenTextDocument(doc: vscode.TextDocument)
+    {
+        this.tryLoadDocument(doc)?.reparseSymbols(doc);
     }
 
-    // provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): Promise<vscode.DocumentSymbol[]>  {
-    //     return new Promise((resolve, reject) => 
-    //     {
-    //         throw new Error('Method not implemented.');
-    //     });
-    // }
-    
-    // provideDefinition(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken): Promise<vscode.Definition> {
-    //     return new Promise((resolve, reject) => 
-    //     {
-    //         throw new Error('Method not implemented.');
-    //     });
-    // }
+    private onDidCreateFiles(params: vscode.FileCreateEvent) {
+        params.files.forEach((uri) => {
+            vscode.workspace.openTextDocument(uri).then(doc => this.tryLoadDocument(doc));
+        });
+    }
 
+    private onDidDeleteFiles(params: vscode.FileDeleteEvent) {
+        params.files.forEach((uri) => {
+            this.coqDocuments.delete(uri.toString());
+        });
+    }
+
+    private onDidRenameFiles(params: vscode.FileRenameEvent) {
+        params.files.forEach((uris) => {
+            // do nothing if the rename is invalid
+            if (uris.newUri === uris.oldUri
+                || !this.coqDocuments.has(uris.oldUri.toString()))
+            {
+                return;
+            }
+            if (this.coqDocuments.get(uris.oldUri.toString()) !== undefined)
+            {
+                // remove old one
+                this.coqDocuments.delete(uris.oldUri.toString());
+                // try load new one
+                // MARK: somehow this overlaps with vscode.workspace.onDidOpenTextDocument
+                // only updates when the document is not open
+                if (!this.coqDocuments.has(uris.newUri.toString()))
+                {
+                    vscode.workspace.openTextDocument(uris.newUri).then((doc) => {
+                        this.tryLoadDocument(doc)?.reparseSymbols(doc);
+                    });
+                }
+            }
+        });
+    }
 }

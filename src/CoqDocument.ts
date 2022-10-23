@@ -22,10 +22,13 @@ export class CoqDocument implements vscode.Disposable {
         return this.symbols_flat;
     }
 
-    public reparseSymbols(doc: vscode.TextDocument) {
-        CoqDocumentSymbolProvider.provideDocumentSymbols(doc).then(([symbols, symbols_flat]) => {
-            this.symbols = symbols;
-            this.symbols_flat = symbols_flat;
-        });
+    public async reparseSymbols(doc: vscode.TextDocument) {
+        let results = await CoqDocumentSymbolProvider.provideDocumentSymbols(doc);
+        this.symbols = results[0];
+        this.symbols_flat = results[1];
+        // then(([symbols, symbols_flat]) => {
+        //     this.symbols = symbols;
+        //     this.symbols_flat = symbols_flat;
+        // }).catch(reason => console.debug(reason));
     }
 }
