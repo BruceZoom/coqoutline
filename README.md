@@ -112,9 +112,9 @@ Violating them may cause the extension analyze your Coq files in wrong ways.
 ## Known Issues & ToDos
 
 - [ ] does not support utf-8 characters
-- [x] multiple assumptions by one key word.
-- [x] the `with` keyword
-- [x] the range (end line) of program definitions may be wrong, no "Defined" token
-- [x] incorrectly includes code in comments
-- [x] inductive constructors not handled
-- [x] after renaming an open file, the outline view cannot display but definitions can already be located
+- [x] multiple assumptions by one key word. (supported)
+- [x] the `with` keyword (supported)
+- [x] the range (end line) of program definitions may be wrong, no "Defined" token (supported)
+- [x] incorrectly includes code in comments (fixed)
+- [x] inductive constructors not handled (fixed)
+- [x] after renaming an open file, the outline view cannot display but definitions can already be located (fixed)
