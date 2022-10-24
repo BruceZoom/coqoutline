@@ -13,7 +13,7 @@ export class CoqProject implements vscode.Disposable
 
         vscode.workspace.onDidCreateFiles((params) => this.onDidCreateFiles(params));
         vscode.workspace.onDidDeleteFiles((params) => this.onDidDeleteFiles(params));
-        vscode.workspace.onDidRenameFiles((params) => this.onDidRenameFiles(params));
+        vscode.workspace.onDidRenameFiles(this.onDidRenameFiles, this);
 
         vscode.workspace.findFiles("_CoqProject").then((results) => {
             // only prepare symbols for all Coq files in the workspace
@@ -67,9 +67,6 @@ export class CoqProject implements vscode.Disposable
             this.coqDocuments.set(uri, coqDoc);
             return coqDoc;
         }
-        else {
-            console.debug("repeated load of " + doc.fileName);
-        }
     }
 
     private onDidChangeTextDocument(params: vscode.TextDocumentChangeEvent) {
@@ -108,19 +105,14 @@ export class CoqProject implements vscode.Disposable
             {
                 return;
             }
-            if (this.coqDocuments.get(uris.oldUri.toString()) !== undefined)
+            let oldCoqDoc = this.coqDocuments.get(uris.oldUri.toString());
+            if (oldCoqDoc !== undefined)
             {
+                // update the new one
+                // MARK: must update synchronously, otherwise not in effect
+                this.coqDocuments.set(uris.newUri.toString(), oldCoqDoc);
                 // remove old one
                 this.coqDocuments.delete(uris.oldUri.toString());
-                // try load new one
-                // MARK: somehow this overlaps with vscode.workspace.onDidOpenTextDocument
-                // only updates when the document is not open
-                if (!this.coqDocuments.has(uris.newUri.toString()))
-                {
-                    vscode.workspace.openTextDocument(uris.newUri).then((doc) => {
-                        this.tryLoadDocument(doc)?.reparseSymbols(doc);
-                    });
-                }
             }
         });
     }
