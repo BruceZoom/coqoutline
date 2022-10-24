@@ -15,12 +15,12 @@ A VSCode extension that provides outline view for Coq files.
   - Parameter/Axiom/Conjecture/Variable/Hypothesis and their plural variants.
   - Definitions by the `with` keyword.
 
-## Screen Shots
-- Screen shot of the outline view.
-  ![](img/outline-screenshot.png)
-- Screen shot of the context menu and peek definition.
-  ![](img/context-screenshot.png)
-  ![](img/peek-screenshot.png)
+## Screenshots
+- Screenshot of the outline view.
+  ![outline-screenshot](https://user-images.githubusercontent.com/32293407/197471888-930fd668-c98a-403a-82ca-cc020b0f57dd.png)
+- Screenshots of the context menu and peek definition.
+  ![context-screenshot](https://user-images.githubusercontent.com/32293407/197471962-5a63c583-4365-4ec8-889d-a6888ea2b234.png)
+  ![peek-screenshot](https://user-images.githubusercontent.com/32293407/197472015-6bca6f00-e1b0-4a95-a0fa-3f1501a14e86.png)
 
 ## Requirements
 * VS Code 1.72.0, or more recent
